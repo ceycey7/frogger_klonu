@@ -1,0 +1,36 @@
+{
+    "tasks": [
+        {
+            "type": "cppbuild",
+            "label": "allegro_build_task",
+            "command": "C:/msys64/ucrt64/bin/gcc.exe",
+            "args": [
+                "-fdiagnostics-color=always",
+                "-g",
+                "${file}",
+                "-o",
+                "${fileDirname}/${fileBasenameNoExtension}.exe",
+                "-I", "C:/msys64/ucrt64/include",
+                "-L", "C:/msys64/ucrt64/lib",
+                "-lallegro",
+                "-lallegro_main",
+                "-lallegro_primitives",
+                "-lallegro_font",
+                "-lallegro_ttf",
+                "-lallegro_image"
+            ],
+            "options": {
+                "cwd": "${fileDirname}"
+            },
+            "problemMatcher": [
+                "$gcc"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "detail": "MSYS2 UCRT64 Allegro 5 Compiler Task"
+        }
+    ],
+    "version": "2.0.0"
+}
