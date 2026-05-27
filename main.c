@@ -4,8 +4,37 @@
 #include <allegro5/allegro_primitives.h>                                            //geometrik sekiller icin
 #define FPS 60                                                                      //saniyede kare yenilenme hizi
 #define SCREEN_WIDTH 640                                                            //oyun penceresi yatay genislik
-#define SCREEN_HEIGHT 480                                                           //oyun penceresi dikey genislik
+#define SCREEN_HEIGHT 520                                                           //oyun penceresi dikey genislik
 #define STEP_SIZE 40                                                                //yon tuslariyla kurbaganin kac pixel hareket edecegi
+#define LANE_COUNT 13                                                               //serit sayisi
+#define LANE_HEIGHT 40                                                              //serit yuksekligi
+typedef enum {
+    LANE_START,                                                                     //baslangic seridi
+    LANE_SAFE,                                                                      //hedef seridi
+    LANE_ROAD,                                                                      //asfalt seridi
+    LANE_WATER,                                                                     //su seridi
+    LANE_MIDDLE,                                                                    //ortadaki uzerinde beklenebilen serit
+} LaneType;
+typedef struct {                                                                    //seridim ozellikleri
+    LaneType type;                                                                  //serit turu
+    int direction;                                                                  //hareket yonu
+    float speed;                                                                    //hareket hizi
+} Lane;
+Lane lanes[LANE_COUNT] = {                                                          //serit dizisi
+    {LANE_SAFE, 0,0.0f},                                                            //hedef seridi bolgesi
+    {LANE_WATER, +1,1.5f},                                                          //su seridi, saga dogru, orta hiz
+    {LANE_WATER, -1,1.5f},                                                          //su seridi, sola dogru, orta hiz
+    {LANE_WATER, +1,1.5f},                                                          //su seridi, saga dogru, orta hiz
+    {LANE_WATER, +1,1.0f},                                                          //su seridi, saga dogru, yavas
+    {LANE_WATER, -1,2.0f},                                                          //su seridi, sola dogru, hizli
+    {LANE_MIDDLE, 0,0.0f},                                                          //ortadaki beklenebilen serit
+    {LANE_ROAD, -1,1.0f},                                                           //asfalt seridi, sola dogru, yavas
+    {LANE_ROAD, +1,3.0f},                                                           //asfalt seridi, saga dogru, cok hizli
+    {LANE_ROAD, -1,1.5f},                                                           //asfalt seridi, sola dogru, orta hizli
+    {LANE_ROAD, +1,1.5f},                                                           //asfalt seridi, saga dogru, orta hizli
+    {LANE_ROAD, -1,1.5f},                                                           //asfalt seridi, sola dogru, orta hizli
+    {LANE_START, 0,0.0f},                                                           //baslangic seridi
+};
 struct Frog {                                                                       //kurbaganin ozellikleri
     float x;                                                                        //yatay konumu
     float y;                                                                        //dikey konumu
@@ -31,7 +60,7 @@ int main(){
     struct Frog frog;                                                               //kurbagayi nesne olarak uretir
     frog.size= 30;                                                                  //boyutu 30 pixel
     frog.x= (SCREEN_WIDTH/2)-(frog.size/2);                                         //x ekseninde pencerenin tam ortasinda
-    frog.y= SCREEN_HEIGHT-50;                                                       //y ekseninde pencerenin en altinda
+    frog.y= SCREEN_HEIGHT-LANE_HEIGHT+(LANE_HEIGHT-frog.size)/2;                    //y ekseninde kurbaga baslangic seridinin tam ortasinda                                 //y ekseninde pencerenin en altinda
     frog.lives= 3;                                                                  //baslangicta 3 cani var
     bool game_running= true;                                                        //oyun dongusunu acik tutar
     bool redraw= true;                                                              //cizim kontrolu yapar
@@ -72,9 +101,35 @@ int main(){
         }
         if (redraw && al_is_event_queue_empty(event_queue)) {                       //sirada bekleyen olay yoksa cizimi baslatir
             redraw = false;
-            al_clear_to_color(al_map_rgb(255,180,0));                               //pencerenin tamamini boyar
-            al_draw_filled_rectangle(                                               //kurbagayi cizer
-                frog.x, frog.y, frog.x + frog.size, frog.y + frog.size, al_map_rgb(0,255,0)
+            al_clear_to_color(al_map_rgb(0,0,0));                                   //pencereyi tamamen siyaha boyayarak onceki karenin kalintilarini temizler
+            for(int i=0;i<LANE_COUNT;i++) {                                         //serit sayisi kadar dongu
+                float y=i*LANE_HEIGHT;                                              //seritin numarasina gore cizilecegi pixel yuksekligi
+                ALLEGRO_COLOR color;                                                //renk icin degisken
+                switch (lanes[i].type) {                                            //serit turune gore;
+                    case LANE_START:                                                //baslangic seridi ise
+                        color=al_map_rgb(255,180,0);                                //turuncu
+                        break;
+                    case LANE_SAFE:                                                 //hedef seridi ise
+                        color=al_map_rgb(0,255,0);                                  //acik yesil
+                        break;
+                    case LANE_ROAD:                                                 //asfalt seridi ise
+                        color=al_map_rgb(128,128,128);                              //gri
+                        break;
+                    case LANE_WATER:                                                //su seridi ise
+                        color=al_map_rgb(51,153,255);                               //mavi
+                        break;
+                    case LANE_MIDDLE:                                               //ortada beklenebilen serit ise
+                        color=al_map_rgb(153,0,153);                                //mor
+                        break;
+                    default:                                                        //hicbiri degil ise
+                        color=al_map_rgb(255,180,0);                                //turuncu
+                        break;
+                }
+                al_draw_filled_rectangle(0,y,SCREEN_WIDTH,y+LANE_HEIGHT,color);     //seritleri cizer
+                al_draw_line(0,y+LANE_HEIGHT,SCREEN_WIDTH,y+LANE_HEIGHT,al_map_rgb(255,180,0),1.0f);    //seritler arasina 1 pixellik turuncu cizgi cizer
+            }                            
+            al_draw_filled_rectangle(                                               //kurbagayi cizer, koyu yesil
+                frog.x, frog.y, frog.x + frog.size, frog.y + frog.size, al_map_rgb(0,102,0)
             );
             al_flip_display();                                                      //cizilen kurbagayi gosterir
         }
