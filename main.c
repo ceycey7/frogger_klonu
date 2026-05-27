@@ -10,6 +10,7 @@
 #define LANE_HEIGHT 40                                                              //serit yuksekligi
 #define VEHICLES_PER_LANE 3                                                         //her seritteki arac sayisi
 #define TOTAL_VEHICLES (LANE_COUNT*VEHICLES_PER_LANE)                               //toplam arac sayisi
+#define PLATFORMS_PER_LANE 3                                                        //her su seridindeki platform(kaplumbaga veya kutuk) sayisi
 struct Frog {                                                                       //kurbaganin ozellikleri
     float x;                                                                        //yatay konumu
     float y;                                                                        //dikey konumu
@@ -57,6 +58,19 @@ typedef struct {                                                                
     float speed;                                                                    //hizi
     int lane;                                                                       //bulundugu serit                                                         
 } Vehicle;
+typedef enum {
+    PLATFORM_LOG,                                                                   //kutuk
+    PLATFORM_TURTLE,                                                                //kaplumbaga
+} PlatformType;
+typedef struct {                                                                    //platformun ozellikleri
+    PlatformType type;                                                              //platform turu
+    float x;                                                                        //yatay
+    float y;                                                                        //dikey
+    float width;                                                                    //genislik
+    int direction;                                                                  //yonu
+    float speed;                                                                    //hizi
+    int lane;                                                                       //bulundugu serit
+} Platform;
 int main() {
     if (!al_init())                                                                 //allegro ana motor
         return -1;                                                                  //baslatilamazsa -1 dondur
@@ -105,6 +119,32 @@ int main() {
         }
     }
     int total_vehicles=v;                                                           //gercek arac sayisi
+    PlatformType water_lane_types[] = {                                             //su seritlerindeki platform turleri
+        PLATFORM_LOG,                                                               //kutuk
+        PLATFORM_TURTLE,                                                            //kaplumbaga
+        PLATFORM_LOG,                                                               //kutuk
+        PLATFORM_LOG,                                                               //kutuk
+        PLATFORM_TURTLE,                                                            //kaplumbaga
+    };
+    Platform platforms[LANE_COUNT*PLATFORMS_PER_LANE];                              //platform dizisi
+    int p=0;                                                                        //platform sayaci
+    int water_lane=0;                                                               //su seridi sayaci
+    for (int i=0;i<LANE_COUNT;i++) {                                                //serit kontrol dongusu
+        if (lanes[i].type != LANE_WATER)                                            //su seridi degilse
+            continue;                                                               //atla
+        for (int j=0;j<PLATFORMS_PER_LANE;j++) {                                    //her seritteki platform dongusu
+            platforms[p].lane=i;                                                    //hangi seritte
+            platforms[p].direction=lanes[i].direction;                              //seridin yonunu kullan
+            platforms[p].speed=lanes[i].speed;                                      //seridin hizini kullan
+            platforms[p].y=i*LANE_HEIGHT+(LANE_HEIGHT-30)/2;                        //y ekseninde bulundugu seridi ortaliyor
+            platforms[p].type=water_lane_types[water_lane];                         //siraya gore turunu belirle
+            platforms[p].width=80.0f;                                               //genislik (2 kaplumbaga=1 kutuk)
+            platforms[p].x=j*(SCREEN_WIDTH/PLATFORMS_PER_LANE);                     //platformlar aarsi mesafe esit
+            p++;                                                                    //sonraki platforma gec
+        }
+        water_lane++;                                                               //sonraki su seridine gec
+    }
+    int total_platforms=p;                                                          //gercek platform sayisi
     bool game_running= true;                                                        //oyun dongusunu acik tutar
     bool redraw= true;                                                              //cizim kontrolu yapar
     al_start_timer(timer);                                                          //zamanlayiciyi baslatir
@@ -115,10 +155,17 @@ int main() {
             redraw = true;                                                          //gelince goruntu yeniler
             for (int i=0;i<total_vehicles;i++) {                                    //her arac icin dongu
                 vehicles[i].x += vehicles[i].direction*vehicles[i].speed;           //arac hareketi
-                if (vehicles[i].direction==+1&&vehicles[i].x>SCREEN_WIDTH)          //pencerenin sagindan dısari cikinca
+                if (vehicles[i].direction==+1&&vehicles[i].x>SCREEN_WIDTH)          //pencerenin sagindan disari cikinca
                     vehicles[i].x=-vehicles[i].width;                               //solundan iceri gir
                 if (vehicles[i].direction==-1&&vehicles[i].x+vehicles[i].width<0)   //pencerenin solundan cikinca
                     vehicles[i].x=SCREEN_WIDTH;                                     //sagindan iceri gir
+            }
+            for (int i=0;i<total_platforms;i++) {                                   //her platform icin dongu
+                platforms[i].x += platforms[i].direction*platforms[i].speed;        //platform hareketi
+                if (platforms[i].direction==+1&&platforms[i].x>SCREEN_WIDTH)        //pencerenin sagindan disari cikinca
+                    platforms[i].x= -platforms[i].width;                            //solundan iceri gir
+                if (platforms[i].direction==-1&&platforms[i].x+platforms[i].width<0)//pencerenin solundan disari cikinca
+                    platforms[i].x=SCREEN_WIDTH;                                    //sagindan iceri gir
             }
         }
         else if (event.type == ALLEGRO_EVENT_DISPLAY_CLOSE)                         //pencerede x'e basilirsa
@@ -167,7 +214,7 @@ int main() {
                         color=al_map_rgb(128,128,128);                              //gri
                         break;
                     case LANE_WATER:                                                //su seridi ise
-                        color=al_map_rgb(51,153,255);                               //mavi
+                        color=al_map_rgb(153,204,255);                              //mavi
                         break;
                     case LANE_MIDDLE:                                               //ortada beklenebilen serit ise
                         color=al_map_rgb(153,0,153);                                //mor
@@ -192,6 +239,27 @@ int main() {
                     vehicles[i].x+vehicles[i].width, vehicles[i].y+30,              //genisligi turune gore cizer
                     vcolor                                                          //turune gore boyar
                 );
+            }
+            for (int i=0;i<total_platforms;i++) {                                   //her platform icin dongu
+                if (platforms[i].type==PLATFORM_LOG) {                              //kutukse
+                    al_draw_filled_rectangle(                                       //kutuk cizer
+                        platforms[i].x, platforms[i].y,
+                        platforms[i].x+platforms[i].width, platforms[i].y+30,
+                        al_map_rgb(139,90,43)                                       //kahverengi
+                    );
+                }
+                else {                                                              //kaplumbagaysa ikili cizecek
+                    al_draw_filled_rectangle(                                       //birinci kaplumbagayi cizer
+                        platforms[i].x, platforms[i].y,
+                        platforms[i].x+35, platforms[i].y+30, 
+                        al_map_rgb(0,204,204)                                       //su yesili
+                    );
+                    al_draw_filled_rectangle(                                       //ikinci kaplumbagayi cizer
+                        platforms[i].x+45, platforms[i].y,
+                        platforms[i].x+80, platforms[i].y+30, 
+                        al_map_rgb(0,153,153)                                       //koyu su yesil
+                    );
+                }
             }
             al_draw_filled_rectangle(                                               //kurbagayi cizer
                 frog.x, frog.y,
