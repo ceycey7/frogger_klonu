@@ -92,6 +92,7 @@ int main() {
     frog.x= (SCREEN_WIDTH/2)-(frog.size/2);                                         //x ekseninde pencerenin tam ortasinda
     frog.y= SCREEN_HEIGHT-LANE_HEIGHT+(LANE_HEIGHT-frog.size)/2;                    //y ekseninde kurbaga baslangic seridinin tam ortasinda
     frog.lives= 3;                                                                  //baslangicta 3 cani var
+    int invincible_timer=0;                                                         //her turlu carpismada sadece 1 can gitmesi icin dokunulmazlik sayaci
     Vehicle vehicles[TOTAL_VEHICLES];                                               //arac dizisi
     int v=0;                                                                        //arac sayaci
     for (int i=0;i<LANE_COUNT;i++) {                                                //serit kontrol dongusu
@@ -156,18 +157,35 @@ int main() {
             for (int i=0;i<total_vehicles;i++) {                                    //her arac icin dongu
                 vehicles[i].x += vehicles[i].direction*vehicles[i].speed;           //arac hareketi
                 if (vehicles[i].direction==+1&&vehicles[i].x>SCREEN_WIDTH)          //pencerenin sagindan disari cikinca
-                    vehicles[i].x=-vehicles[i].width;                               //solundan iceri gir
+                    vehicles[i].x=-vehicles[i].width;                               //solundan iceri girer
                 if (vehicles[i].direction==-1&&vehicles[i].x+vehicles[i].width<0)   //pencerenin solundan cikinca
-                    vehicles[i].x=SCREEN_WIDTH;                                     //sagindan iceri gir
+                    vehicles[i].x=SCREEN_WIDTH;                                     //sagindan iceri girer
             }
             for (int i=0;i<total_platforms;i++) {                                   //her platform icin dongu
                 platforms[i].x += platforms[i].direction*platforms[i].speed;        //platform hareketi
                 if (platforms[i].direction==+1&&platforms[i].x>SCREEN_WIDTH)        //pencerenin sagindan disari cikinca
-                    platforms[i].x= -platforms[i].width;                            //solundan iceri gir
+                    platforms[i].x= -platforms[i].width;                            //solundan iceri girer
                 if (platforms[i].direction==-1&&platforms[i].x+platforms[i].width<0)//pencerenin solundan disari cikinca
-                    platforms[i].x=SCREEN_WIDTH;                                    //sagindan iceri gir
+                    platforms[i].x=SCREEN_WIDTH;                                    //sagindan iceri girer
             }
-        }
+            if (invincible_timer>0) {                                               //dokunulmazlik suresi devam ediyorsa
+                invincible_timer--;                                                 //sayaci azaltir
+            }
+            else {                                                                  //dokunulmazlik suresi bitmisse
+                for (int i=0;i<total_vehicles;i++) {                                //carpisma kontrolu
+                    if (frog.x<vehicles[i].x+vehicles[i].width&& 
+                        frog.x+frog.size>vehicles[i].x&&  
+                        frog.y<vehicles[i].y+30&&  
+                        frog.y+frog.size>vehicles[i].y) {  
+                        frog.lives--;                                               //canı 1 azaltir
+                        frog.x=(SCREEN_WIDTH/2)-(frog.size/2);                      //baslangic x konumuna doner
+                        frog.y=SCREEN_HEIGHT-LANE_HEIGHT+(LANE_HEIGHT-frog.size)/2; //baslangic y konumuna doner
+                        invincible_timer=60;                                        //1 saniye dokunulmaz kalir
+                        break;                                                      //tek seferde tek can kaybi
+                    }
+                }
+            }   
+        }   
         else if (event.type == ALLEGRO_EVENT_DISPLAY_CLOSE)                         //pencerede x'e basilirsa
             game_running = false;                                                   //oyunu kapatir
         else if (event.type == ALLEGRO_EVENT_KEY_DOWN) {
