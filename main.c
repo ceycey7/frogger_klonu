@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <allegro5/allegro.h>
 #include <allegro5/allegro_primitives.h>                                            //geometrik sekiller icin
+#include <allegro5/allegro_font.h>                                                  //yazi icin
 #define FPS 60                                                                      //saniyede kare yenilenme hizi
 #define SCREEN_WIDTH 640                                                            //oyun penceresi yatay genislik
 #define SCREEN_HEIGHT 520                                                           //oyun penceresi dikey genislik
@@ -85,10 +86,15 @@ int main() {
         return -1;                                          
     if (!al_init_primitives_addon())                                                //geometrik sekiller icin (kare kurbaga)
         return -1;                                     
+    if (!al_init_font_addon())                                                      //yazi eklentisini baslatir
+        return -1;
     al_set_new_display_flags(ALLEGRO_WINDOWED | ALLEGRO_OPENGL);                    //ekran kartimla uyusmazlik oldugu icin standart DirectX yerine OpenGL kullanımını zotunlu tuttum
     ALLEGRO_TIMER *timer= al_create_timer(1.0/FPS);                                 //oyun hizini sabitler
     ALLEGRO_EVENT_QUEUE *event_queue= al_create_event_queue();                      //hareketleri siraya alir
     ALLEGRO_DISPLAY *display= al_create_display(SCREEN_WIDTH,SCREEN_HEIGHT);        //pencereyi olusturan satir
+    ALLEGRO_FONT *font=al_create_builtin_font();                                    //yerlesik fontu yukler
+    if (!font)
+        return -1;
     if(!timer||!event_queue||!display)                                              //yukaridakiler yapilamazsa oyunu kapatir
         return -1;
     al_register_event_source(event_queue,al_get_display_event_source(display));     //pencereyi kapatma hareketini siraya alir
@@ -103,6 +109,8 @@ int main() {
     frog.drown_timer=0;                                                             //batma sayaci sifir
     int invincible_timer=0;                                                         //her turlu carpismada sadece 1 can gitmesi icin dokunulmazlik sayaci
     int level=1;                                                                    //baslangic seviyesi
+    int time_limit=60*FPS;                                                          //60 sn (frame cinsinden)
+    int time_left=time_limit;                                                       //kalan sure
     Goal goals[GOAL_COUNT];                                                         //hedef dizisi
     for (int i=0;i<GOAL_COUNT;i++) {                                                //hedeflerin dongusu
         goals[i].filled=false;                                                      //baslangicta hepsi bos
@@ -169,6 +177,16 @@ int main() {
         al_wait_for_event(event_queue, &event);                                     //yeni hareket komutu bekler ve geleni 'event' degiskenine kaydeder
         if (event.type == ALLEGRO_EVENT_TIMER) {                                    //zamanlayicidan sinyal bekler
             redraw = true;                                                          //gelince goruntu yeniler
+            if (time_left>0) {                                                      //sure bitmemisse
+                time_left--;                                                        //sayaci azaltir
+            }       
+            else {                                                                  //sure bitmisse
+                frog.lives--;                                                       //cani azaltir
+                frog.x=(SCREEN_WIDTH/2)-(frog.size/2);                              //baslangic x konumuna doner
+                frog.y=SCREEN_HEIGHT-LANE_HEIGHT+(LANE_HEIGHT-frog.size)/2;         //baslangic y konumuna doner
+                time_left=time_limit;                                               //sureyi sifirlar
+                invincible_timer=30;                                                //dokunulmazlik suresi
+            }
             for (int i=0;i<total_vehicles;i++) {                                    //her arac icin dongu
                 vehicles[i].x += vehicles[i].direction*vehicles[i].speed;           //arac hareketi
                 if (vehicles[i].direction==+1&&vehicles[i].x>SCREEN_WIDTH)          //pencerenin sagindan disari cikinca
@@ -291,6 +309,7 @@ int main() {
                         vehicles[i].speed+=vehicles[i].speed*0.2f;                  //hizi %20 arttirir
                     for (int i=0;i<total_platforms;i++)                             //her platform icin dongu
                         platforms[i].speed+=platforms[i].speed*0.2f;                //hizi %20 arttirir
+                    time_left=time_limit;                                           //yeni seviyede kalan sureyi sifirlar
                 }
             }   
         }   
@@ -420,9 +439,14 @@ int main() {
                     frog.x + frog.size, frog.y + frog.size, al_map_rgb(0,102,0)     //koyu yesil
                 );
             }
+            char time_str[32];                                                      //sure yazisi icin karakter dizisi
+            sprintf(time_str,"TIME: %d",time_left/FPS); 
+            al_draw_text(font,al_map_rgb(0,0,0),10, SCREEN_HEIGHT-20, 
+        ALLEGRO_ALIGN_LEFT, time_str);                                              //sol alta yazi yazar
             al_flip_display();                                                      //cizilen kurbagayi gosterir
         }
     }
+    al_destroy_font(font);                                                          //oyun kapatilince fontu temizler
     al_destroy_display(display);                                                    //oyun kapatilinca pencere hafizasini temizler
     al_destroy_timer(timer);                                                        //oyun kapatilinca zamanlayici hafizasini temizler
     al_destroy_event_queue(event_queue);                                            //oyun kapatilinca sira hafizasini temizler
