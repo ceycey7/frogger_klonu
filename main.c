@@ -11,6 +11,7 @@
 #define VEHICLES_PER_LANE 3                                                         //her seritteki arac sayisi
 #define TOTAL_VEHICLES (LANE_COUNT*VEHICLES_PER_LANE)                               //toplam arac sayisi
 #define PLATFORMS_PER_LANE 3                                                        //her su seridindeki platform(kaplumbaga veya kutuk) sayisi
+#define GOAL_COUNT 5                                                                //hedef sayisi
 struct Frog {                                                                       //kurbaganin ozellikleri
     float x;                                                                        //yatay konumu
     float y;                                                                        //dikey konumu
@@ -73,6 +74,10 @@ typedef struct {                                                                
     float speed;                                                                    //hizi
     int lane;                                                                       //bulundugu serit
 } Platform;
+typedef struct {                                                                    //hedef ozellikleri
+    float x;                                                                        //yatay konum
+    bool filled;                                                                    //doluluk durumu
+} Goal;
 int main() {
     if (!al_init())                                                                 //allegro ana motor
         return -1;                                                                  //baslatilamazsa -1 dondur
@@ -97,6 +102,12 @@ int main() {
     frog.drowning=false;                                                            //baslangicta batmiyor
     frog.drown_timer=0;                                                             //batma sayaci sifir
     int invincible_timer=0;                                                         //her turlu carpismada sadece 1 can gitmesi icin dokunulmazlik sayaci
+    int level=1;                                                                    //baslangic seviyesi
+    Goal goals[GOAL_COUNT];                                                         //hedef dizisi
+    for (int i=0;i<GOAL_COUNT;i++) {                                                //hedeflerin dongusu
+        goals[i].filled=false;                                                      //baslangicta hepsi bos
+        goals[i].x=i*(SCREEN_WIDTH/GOAL_COUNT)+(SCREEN_WIDTH/GOAL_COUNT-30)/2;      //esit araliklar
+    }
     Vehicle vehicles[TOTAL_VEHICLES];                                               //arac dizisi
     int v=0;                                                                        //arac sayaci
     for (int i=0;i<LANE_COUNT;i++) {                                                //serit kontrol dongusu
@@ -253,6 +264,30 @@ int main() {
                         break;                                                      //tek seferde tek can kaybi
                     }
                 }
+            }
+            if (lanes[frog_lane].type==LANE_SAFE) {                                 //hedef seridindeyse
+                for (int i=0;i<GOAL_COUNT;i++) {                                    //her hedef icin kontrol donusu
+                    if (!goals[i].filled&&frog.x+frog.size>goals[i].x&&             //dolu degilse ve kurbaga dogru yerdeyse
+                    frog.x<goals[i].x+30) { 
+                        goals[i].filled=true;                                       //hedefi doldurur
+                        frog.x=(SCREEN_WIDTH/2)-(frog.size/2);                      //baslangic x konumuna doner
+                        frog.y=SCREEN_HEIGHT-LANE_HEIGHT+(LANE_HEIGHT-frog.size)/2; //baslangic y konumuna doner
+                        invincible_timer=30;                                        //dokunulmazlik suresi
+                        break;
+                    }
+                }
+                bool all_filled=true;                                               //doluluk kontrolu icin
+                for (int i=0;i<GOAL_COUNT;i++) {                                    //butun hedefleri kontrol dongusu
+                    if (!goals[i].filled) {                                         //bos hedef varsa
+                        all_filled=false;                                           //hepsi dolu durumu yanlıs olur
+                            break;
+                    }
+                }
+                if (all_filled) {                                                   //hedeflerin hepsi dolduysa
+                    level++;                                                        //seviyeyi arttırır
+                    for (int i=0;i<GOAL_COUNT;i++)                                  //yeni seviyedeki her hedef icin
+                        goals[i].filled=false;                                      //yerlerini tekrar bosaltir
+                }
             }   
         }   
         else if (event.type == ALLEGRO_EVENT_DISPLAY_CLOSE)                         //pencerede x'e basilirsa
@@ -314,6 +349,23 @@ int main() {
                 }
                 al_draw_filled_rectangle(0,y,SCREEN_WIDTH,y+LANE_HEIGHT,color);     //seritleri cizer
                 al_draw_line(0,y+LANE_HEIGHT,SCREEN_WIDTH,y+LANE_HEIGHT,al_map_rgb(255,180,0),1.0f);    //seritler arasina 1 pixellik acik turuncu cizgi cizer
+            }
+            for (int i=0;i<GOAL_COUNT;i++) {                                        //hedefler kontrol dongusu
+                if (goals[i].filled) {                                              //hedef dolduysa
+                    al_draw_filled_rectangle(                                       //cerceve cizer
+                        goals[i].x, 5, goals[i].x+30, 35, al_map_rgb(0,80,0)        //cok koyu yesil
+                    );
+                    al_draw_filled_rectangle(                                       //hedefe ulasmis kurbagayi cizer
+                        goals[i].x+(30-frog.size)/2, 5+(30-frog.size)/2,
+                        goals[i].x+(30+frog.size)/2, 5+(30+frog.size)/2, 
+                        al_map_rgb(0,102,0)                                         //koyu yesil
+                    );
+                }
+                else {                                                              //hedef bossa
+                    al_draw_filled_rectangle(                                       //bos hedef cercevesi
+                        goals[i].x, 5, goals[i].x+30, 35, al_map_rgb(0,180,0)       //acik yesil
+                    );
+                }
             }                            
             for (int i=0;i<total_vehicles;i++) {                                    //her arac icin dongu
                 ALLEGRO_COLOR vcolor;                                               //arac rengi degiskeni
