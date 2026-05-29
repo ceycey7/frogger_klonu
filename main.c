@@ -88,7 +88,7 @@ int main() {
     al_register_event_source(event_queue,al_get_timer_event_source(timer));         //zamanlayicinin sinyallerini siraya alir
     al_register_event_source(event_queue,al_get_keyboard_event_source());           //klavye hareketlerini siraya alir
     struct Frog frog;                                                               //kurbagayi nesne olarak uretir
-    frog.size= 30;                                                                  //boyutu 30 pixel
+    frog.size= 20;                                                                  //boyutu 20 pixel
     frog.x= (SCREEN_WIDTH/2)-(frog.size/2);                                         //x ekseninde pencerenin tam ortasinda
     frog.y= SCREEN_HEIGHT-LANE_HEIGHT+(LANE_HEIGHT-frog.size)/2;                    //y ekseninde kurbaga baslangic seridinin tam ortasinda
     frog.lives= 3;                                                                  //baslangicta 3 cani var
@@ -168,6 +168,34 @@ int main() {
                 if (platforms[i].direction==-1&&platforms[i].x+platforms[i].width<0)//pencerenin solundan disari cikinca
                     platforms[i].x=SCREEN_WIDTH;                                    //sagindan iceri girer
             }
+            int frog_lane= (int)(frog.y/LANE_HEIGHT);                               //kurbaga hangi seritte
+            if (lanes[frog_lane].type==LANE_WATER) {                                //serit su seridi mi
+                bool on_platform=false;                                             //platform uzerinde mi
+                for (int i=0;i<total_platforms;i++) {                               //her platformu kontrol dongusu
+                    if (platforms[i].lane==frog_lane) {                             //aynı seritte mi
+                        if (platforms[i].type==PLATFORM_LOG) {                      //kutukse tek alan
+                            on_platform=frog.x+frog.size>platforms[i].x&&           //kurbaganin sagi kutugun solunu geciyor mu
+                            frog.x<platforms[i].x+platforms[i].width;               //kurbaganın solu kutugun sagini geciyor mu
+                        }
+                        else {                                                      //kaplumbagaysa iki alan ayni sekilde kontrol
+                            on_platform=(frog.x+frog.size>platforms[i].x&&          //sol kaplumbaga
+                            frog.x<platforms[i].x+35)||
+                            (frog.x+frog.size>platforms[i].x+45&&                   //sag kaplumbaga
+                            frog.x<platforms[i].x+80);
+                        }
+                        if (on_platform) {                                          //platform uzerindeyse
+                            frog.x+=platforms[i].direction*platforms[i].speed;      //birlikte suruklen
+                            if (frog.x<0||frog.x+frog.size>SCREEN_WIDTH) {          //ekrandan dısarı cıkınca
+                                frog.lives--;                                       //canını azalt
+                                frog.x=(SCREEN_WIDTH/2)-(frog.size/2);              //baslangic x konumuna don
+                                frog.y=SCREEN_HEIGHT-LANE_HEIGHT+(LANE_HEIGHT-frog.size)/2; //baslangic y konumuna don
+                                invincible_timer=30;                                //dokunulmazlik suresi
+                            }
+                            break;
+                        }
+                    }
+                }
+            }
             if (invincible_timer>0) {                                               //dokunulmazlik suresi devam ediyorsa
                 invincible_timer--;                                                 //sayaci azaltir
             }
@@ -180,7 +208,7 @@ int main() {
                         frog.lives--;                                               //canı 1 azaltir
                         frog.x=(SCREEN_WIDTH/2)-(frog.size/2);                      //baslangic x konumuna doner
                         frog.y=SCREEN_HEIGHT-LANE_HEIGHT+(LANE_HEIGHT-frog.size)/2; //baslangic y konumuna doner
-                        invincible_timer=60;                                        //1 saniye dokunulmaz kalir
+                        invincible_timer=30;                                        //1 saniye dokunulmaz kalir
                         break;                                                      //tek seferde tek can kaybi
                     }
                 }
@@ -189,30 +217,32 @@ int main() {
         else if (event.type == ALLEGRO_EVENT_DISPLAY_CLOSE)                         //pencerede x'e basilirsa
             game_running = false;                                                   //oyunu kapatir
         else if (event.type == ALLEGRO_EVENT_KEY_DOWN) {
-            switch (event.keyboard.keycode) {                                       //basilan klavye tusuna gore hareketi saglayan yapi
-                case ALLEGRO_KEY_UP:
-                    if (frog.y - STEP_SIZE >= 0) {                                  //pencerenin ust sinirini asmiyorsa
-                        frog.y -= STEP_SIZE;                                        //kurbaga yukari hareket eder
-                    }
+            if (invincible_timer==0) {                                              //dokunulmazlik suresi bitmisse
+                switch (event.keyboard.keycode) {                                   //basilan klavye tusuna gore hareketi saglayan yapi
+                    case ALLEGRO_KEY_UP:
+                        if (frog.y - STEP_SIZE >= 0) {                              //pencerenin ust sinirini asmiyorsa
+                            frog.y -= STEP_SIZE;                                    //kurbaga yukari hareket eder
+                        }
+                            break;
+                    case ALLEGRO_KEY_DOWN:
+                        if (frog.y + STEP_SIZE < SCREEN_HEIGHT) {                   //pencere alt sinirini asmiyorsa
+                            frog.y += STEP_SIZE;                                    //kurbaga asagi hareket eder
+                        }
+                            break;
+                    case ALLEGRO_KEY_LEFT:
+                        if (frog.x - STEP_SIZE >= 0) {                              //pencere sol sinirini asmiyorsa
+                            frog.x -= STEP_SIZE;                                    //kurbaga sola hareket eder
+                        }
+                            break;
+                    case ALLEGRO_KEY_RIGHT:
+                        if (frog.x + STEP_SIZE < SCREEN_WIDTH) {                    //pencere sag sinirini asmiyorsa
+                            frog.x += STEP_SIZE;                                    //kurbaga saga hareket eder
+                        }
+                            break;
+                    case ALLEGRO_KEY_ESCAPE:                                        //ESC tusuna basilirsa
+                        game_running = false;                                       //oyunu sonlandirir
                         break;
-                case ALLEGRO_KEY_DOWN:
-                    if (frog.y + STEP_SIZE < SCREEN_HEIGHT) {                       //pencere alt sinirini asmiyorsa
-                        frog.y += STEP_SIZE;                                        //kurbaga asagi hareket eder
-                    }
-                        break;
-                case ALLEGRO_KEY_LEFT:
-                    if (frog.x - STEP_SIZE >= 0) {                                  //pencere sol sinirini asmiyorsa
-                        frog.x -= STEP_SIZE;                                        //kurbaga sola hareket eder
-                    }
-                        break;
-                case ALLEGRO_KEY_RIGHT:
-                    if (frog.x + STEP_SIZE < SCREEN_WIDTH) {                        //pencere sag sinirini asmiyorsa
-                        frog.x += STEP_SIZE;                                        //kurbaga saga hareket eder
-                    }
-                        break;
-                case ALLEGRO_KEY_ESCAPE:                                            //ESC tusuna basilirsa
-                    game_running = false;                                           //oyunu sonlandirir
-                    break;
+                }
             }
         }
         if (redraw && al_is_event_queue_empty(event_queue)) {                       //sirada bekleyen olay yoksa cizimi baslatir
@@ -279,10 +309,12 @@ int main() {
                     );
                 }
             }
-            al_draw_filled_rectangle(                                               //kurbagayi cizer
-                frog.x, frog.y,
-                frog.x + frog.size, frog.y + frog.size, al_map_rgb(0,102,0)         //koyu yesil
-            );
+            if (invincible_timer==0||invincible_timer%10<5) {                       //her 10 framede bir yanip soner
+                al_draw_filled_rectangle(                                           //kurbagayi cizer
+                    frog.x, frog.y,
+                    frog.x + frog.size, frog.y + frog.size, al_map_rgb(0,102,0)     //koyu yesil
+                );
+            }
             al_flip_display();                                                      //cizilen kurbagayi gosterir
         }
     }
