@@ -287,6 +287,10 @@ int main() {
                     level++;                                                        //seviyeyi arttırır
                     for (int i=0;i<GOAL_COUNT;i++)                                  //yeni seviyedeki her hedef icin
                         goals[i].filled=false;                                      //yerlerini tekrar bosaltir
+                    for (int i=0;i<total_vehicles;i++)                              //her arac icin dongu
+                        vehicles[i].speed+=vehicles[i].speed*0.2f;                  //hizi %20 arttirir
+                    for (int i=0;i<total_platforms;i++)                             //her platform icin dongu
+                        platforms[i].speed+=platforms[i].speed*0.2f;                //hizi %20 arttirir
                 }
             }   
         }   
