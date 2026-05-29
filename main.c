@@ -16,6 +16,8 @@ struct Frog {                                                                   
     float y;                                                                        //dikey konumu
     int lives;                                                                      //kalan can sayisi
     int size;                                                                       //pixel boyutu
+    bool drowning;                                                                  //batma animasyonu aktif mi
+    int drown_timer;                                                                //batma animasyonu suresi
 };
 typedef enum {
     LANE_START,                                                                     //baslangic seridi
@@ -92,6 +94,8 @@ int main() {
     frog.x= (SCREEN_WIDTH/2)-(frog.size/2);                                         //x ekseninde pencerenin tam ortasinda
     frog.y= SCREEN_HEIGHT-LANE_HEIGHT+(LANE_HEIGHT-frog.size)/2;                    //y ekseninde kurbaga baslangic seridinin tam ortasinda
     frog.lives= 3;                                                                  //baslangicta 3 cani var
+    frog.drowning=false;                                                            //baslangicta batmiyor
+    frog.drown_timer=0;                                                             //batma sayaci sifir
     int invincible_timer=0;                                                         //her turlu carpismada sadece 1 can gitmesi icin dokunulmazlik sayaci
     Vehicle vehicles[TOTAL_VEHICLES];                                               //arac dizisi
     int v=0;                                                                        //arac sayaci
@@ -185,7 +189,7 @@ int main() {
                         }
                         if (on_platform) {                                          //platform uzerindeyse
                             frog.x+=platforms[i].direction*platforms[i].speed;      //birlikte suruklen
-                            if (frog.x<0||frog.x+frog.size>SCREEN_WIDTH) {          //ekrandan dısarı cıkınca
+                            if (frog.x<0||frog.x+frog.size>SCREEN_WIDTH) {          //ekrandan disari cıkınca
                                 frog.lives--;                                       //canını azalt
                                 frog.x=(SCREEN_WIDTH/2)-(frog.size/2);              //baslangic x konumuna don
                                 frog.y=SCREEN_HEIGHT-LANE_HEIGHT+(LANE_HEIGHT-frog.size)/2; //baslangic y konumuna don
@@ -194,6 +198,43 @@ int main() {
                             break;
                         }
                     }
+                }
+            }
+            if (frog.drowning) {                                                    //batiyorsa
+                frog.drown_timer--;                                                 //sayaci azaltir
+                if (frog.drown_timer<=0) {                                          //animasyon bittiyse
+                    frog.drowning=false;                                            //batmayi bitirir
+                    frog.lives--;                                                   //cani azaltir
+                    frog.x=(SCREEN_WIDTH/2)-(frog.size/2);                          //baslangic x konumu
+                    frog.y=SCREEN_HEIGHT-LANE_HEIGHT+(LANE_HEIGHT-frog.size)/2;     //baslangic y konumu
+                    invincible_timer=30;                                            //dokunulmazlik suresi
+                }
+            }
+            if (lanes[frog_lane].type==LANE_WATER&&invincible_timer==0&&!frog.drowning) {   //su seridindeyse, dokunulmaz degilse ve 
+                bool on_platform=false;                                             //platform uzerinde mi
+                for (int i=0;i<total_platforms;i++) {                               //her platform icin kontrol dongusu
+                    if (platforms[i].lane==frog_lane) {                             //ayni seritte mi
+                        if (platforms[i].type==PLATFORM_LOG) {                      //kutukse
+                            on_platform=frog.x+frog.size>platforms[i].x&&
+                            frog.x<platforms[i].x+platforms[i].width;
+                        }
+                        else {                                                      //kaplumbagaysa
+                            on_platform=(frog.x+frog.size>platforms[i].x&& 
+                            frog.x<platforms[i].x+35)|| 
+                            (frog.x+frog.size>platforms[i].x+45&&
+                            frog.x<platforms[i].x+80);
+                        }
+                        if (on_platform)                                            //platform bulununca
+                            break;                                                  //dur
+                    }
+                }
+                if (!on_platform) {                                                 //platform uzerinde degilse
+                    //frog.lives--; 
+                    //frog.x=(SCREEN_WIDTH/2)-(frog.size/2);
+                    //frog.y=SCREEN_HEIGHT-LANE_HEIGHT+(LANE_HEIGHT-frog.size)/2;
+                    //invincible_timer=30;
+                    frog.drowning=true;                                             //batma animasyonunu baslatir
+                    frog.drown_timer=30;                                            //30 frame batma animasyonu
                 }
             }
             if (invincible_timer>0) {                                               //dokunulmazlik suresi devam ediyorsa
@@ -217,7 +258,7 @@ int main() {
         else if (event.type == ALLEGRO_EVENT_DISPLAY_CLOSE)                         //pencerede x'e basilirsa
             game_running = false;                                                   //oyunu kapatir
         else if (event.type == ALLEGRO_EVENT_KEY_DOWN) {
-            if (invincible_timer==0) {                                              //dokunulmazlik suresi bitmisse
+            if (invincible_timer==0&&!frog.drowning) {                              //dokunulmazlik suresi bitmisse
                 switch (event.keyboard.keycode) {                                   //basilan klavye tusuna gore hareketi saglayan yapi
                     case ALLEGRO_KEY_UP:
                         if (frog.y - STEP_SIZE >= 0) {                              //pencerenin ust sinirini asmiyorsa
@@ -309,7 +350,15 @@ int main() {
                     );
                 }
             }
-            if (invincible_timer==0||invincible_timer%10<5) {                       //her 10 framede bir yanip soner
+            if (frog.drowning) {                                                    //batiyorsa
+                int size=frog.size*frog.drown_timer/30;                             //zamanla kuculur
+                al_draw_filled_rectangle(
+                    frog.x+(frog.size-size)/2, frog.y+(frog.size-size)/2,
+                    frog.x+(frog.size+size)/2, frog.y+(frog.size+size)/2,
+                    al_map_rgb(0,51,153)                                            //lacivert (batarken)
+                );
+            }
+            else if (invincible_timer==0||invincible_timer%10<5) {                  //her 10 framede bir yanip soner
                 al_draw_filled_rectangle(                                           //kurbagayi cizer
                     frog.x, frog.y,
                     frog.x + frog.size, frog.y + frog.size, al_map_rgb(0,102,0)     //koyu yesil
