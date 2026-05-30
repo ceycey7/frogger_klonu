@@ -12,7 +12,7 @@
 #define VEHICLES_PER_LANE 3                                                         //her seritteki arac sayisi
 #define TOTAL_VEHICLES (LANE_COUNT*VEHICLES_PER_LANE)                               //toplam arac sayisi
 #define PLATFORMS_PER_LANE 3                                                        //her su seridindeki platform(kaplumbaga veya kutuk) sayisi
-#define GOAL_COUNT 5                                                                //hedef sayisi
+#define GOAL_COUNT 3                                                                //hedef sayisi
 #define HUD_HEIGHT 50                                                               //hud seridi yuksekligi
 struct Frog {                                                                       //kurbaganin ozellikleri
     float x;                                                                        //yatay konumu
@@ -109,6 +109,7 @@ int main() {
     frog.drowning=false;                                                            //baslangicta batmiyor
     frog.drown_timer=0;                                                             //batma sayaci sifir
     int invincible_timer=0;                                                         //her turlu carpismada sadece 1 can gitmesi icin dokunulmazlik sayaci
+    bool game_over=false;                                                           //oyun kaybedildi mi
     int level=1;                                                                    //baslangic seviyesi
     int time_limit=60*FPS;                                                          //60 sn (frame cinsinden)
     int time_left=time_limit;                                                       //kalan sure
@@ -161,7 +162,7 @@ int main() {
             platforms[p].lane=i;                                                    //hangi seritte
             platforms[p].direction=lanes[i].direction;                              //seridin yonunu kullan
             platforms[p].speed=lanes[i].speed;                                      //seridin hizini kullan
-            platforms[p].y=HUD_HEIGHT+i*LANE_HEIGHT+(LANE_HEIGHT-30)/2;              //y ekseninde bulundugu seridi ortaliyor
+            platforms[p].y=HUD_HEIGHT+i*LANE_HEIGHT+(LANE_HEIGHT-30)/2;             //y ekseninde bulundugu seridi ortaliyor
             platforms[p].type=water_lane_types[water_lane];                         //siraya gore turunu belirle
             platforms[p].width=80.0f;                                               //genislik (2 kaplumbaga=1 kutuk)
             platforms[p].x=j*(SCREEN_WIDTH/PLATFORMS_PER_LANE);                     //platformlar aarsi mesafe esit
@@ -174,6 +175,9 @@ int main() {
     bool redraw= true;                                                              //cizim kontrolu yapar
     al_start_timer(timer);                                                          //zamanlayiciyi baslatir
     while (game_running) {                                                          //oyun acikken sürekli dongu
+        if (game_over) {                                                            //oyun kaybedildiyse
+            game_running=false;                                                     //donguyu sonlandir
+        }
         ALLEGRO_EVENT event;                                                        //olay bilgisini tutmak icin degisken
         al_wait_for_event(event_queue, &event);                                     //yeni hareket komutu bekler ve geleni 'event' degiskenine kaydeder
         if (event.type == ALLEGRO_EVENT_TIMER) {                                    //zamanlayicidan sinyal bekler
@@ -183,6 +187,8 @@ int main() {
             }       
             else {                                                                  //sure bitmisse
                 frog.lives--;                                                       //cani azaltir
+                if (frog.lives<=0)                                                  //canlar bittiyse
+                    game_over=true;                                                 //oyunu kaybet
                 frog.x=(SCREEN_WIDTH/2)-(frog.size/2);                              //baslangic x konumuna doner
                 frog.y=SCREEN_HEIGHT-LANE_HEIGHT+(LANE_HEIGHT-frog.size)/2;         //baslangic y konumuna doner
                 time_left=time_limit;                                               //sureyi sifirlar
@@ -221,6 +227,8 @@ int main() {
                             frog.x+=platforms[i].direction*platforms[i].speed;      //birlikte suruklen
                             if (frog.x<0||frog.x+frog.size>SCREEN_WIDTH) {          //ekrandan disari cıkınca
                                 frog.lives--;                                       //canını azalt
+                                if (frog.lives<=0)                                  //canlar bittiyse
+                                    game_over=true;                                 //oyunu kaybet
                                 frog.x=(SCREEN_WIDTH/2)-(frog.size/2);              //baslangic x konumuna don
                                 frog.y=SCREEN_HEIGHT-LANE_HEIGHT+(LANE_HEIGHT-frog.size)/2; //baslangic y konumuna don
                                 invincible_timer=30;                                //dokunulmazlik suresi
@@ -235,6 +243,8 @@ int main() {
                 if (frog.drown_timer<=0) {                                          //animasyon bittiyse
                     frog.drowning=false;                                            //batmayi bitirir
                     frog.lives--;                                                   //cani azaltir
+                    if (frog.lives<=0)                                              //canlar bittiyse
+                        game_over=true;                                             //oyunu bitir
                     frog.x=(SCREEN_WIDTH/2)-(frog.size/2);                          //baslangic x konumu
                     frog.y=SCREEN_HEIGHT-LANE_HEIGHT+(LANE_HEIGHT-frog.size)/2;     //baslangic y konumu
                     invincible_timer=30;                                            //dokunulmazlik suresi
@@ -277,6 +287,8 @@ int main() {
                         frog.y<vehicles[i].y+30&&  
                         frog.y+frog.size>vehicles[i].y) {  
                         frog.lives--;                                               //canı 1 azaltir
+                        if (frog.lives<=0)                                          //canlar bittiyse
+                            game_over=true;                                         //oyunu kaybet
                         frog.x=(SCREEN_WIDTH/2)-(frog.size/2);                      //baslangic x konumuna doner
                         frog.y=SCREEN_HEIGHT-LANE_HEIGHT+(LANE_HEIGHT-frog.size)/2; //baslangic y konumuna doner
                         invincible_timer=30;                                        //1 saniye dokunulmaz kalir
@@ -463,6 +475,15 @@ int main() {
             sprintf(time_str,"TIME: %d",time_left/FPS); 
             al_draw_text(font,al_map_rgb(0,0,0),10, SCREEN_HEIGHT-20, 
         ALLEGRO_ALIGN_LEFT, time_str);                                              //sol alta yazi yazar
+            if (game_over) {                                                        //oyun kaybedildiyse
+                al_clear_to_color(al_map_rgb(0,0,0));                               //ekrani tamamen siyaha boyar
+                al_draw_text(font,al_map_rgb(255,0,0),                              //yaziyi yazar (kirmizi)
+                    SCREEN_WIDTH/2,SCREEN_HEIGHT/2,
+                    ALLEGRO_ALIGN_CENTRE,"GAME OVER");                              //ortaya yazar
+                al_flip_display();                                                  //ekranda gosterir
+                al_rest(2.0);                                                       //2 saniye bekler
+                game_running=false;                                                 //oyunu kapatir
+            }
             al_flip_display();                                                      //cizilen kurbagayi gosterir
         }
     }
