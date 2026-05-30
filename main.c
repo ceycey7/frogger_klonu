@@ -188,14 +188,7 @@ int main() {
                 time_left--;                                                        //sayaci azaltir
             }       
             else {                                                                  //sure bitmisse
-                frog.lives--;                                                       //cani azaltir
-                if (frog.lives<=0)                                                  //canlar bittiyse
-                    game_over=true;                                                 //oyunu kaybet
-                frog.x=(SCREEN_WIDTH/2)-(frog.size/2);                              //baslangic x konumuna doner
-                frog.y=SCREEN_HEIGHT-LANE_HEIGHT+(LANE_HEIGHT-frog.size)/2;         //baslangic y konumuna doner
-                frog_max_y=frog.y;                                                  //en ileri nokta sifirlanir
-                time_left=time_limit;                                               //sureyi sifirlar
-                invincible_timer=30;                                                //dokunulmazlik suresi
+                game_over=true;                                                     //oyun biter
             }
             for (int i=0;i<total_vehicles;i++) {                                    //her arac icin dongu
                 vehicles[i].x += vehicles[i].direction*vehicles[i].speed;           //arac hareketi
@@ -488,6 +481,10 @@ int main() {
             sprintf(score_str,"SCORE: %d",score);                                   //skoru yazar
             al_draw_text(font, al_map_rgb(255,255,255), SCREEN_WIDTH/2, 15,         //hudda orta ust
             ALLEGRO_ALIGN_CENTRE,score_str);                                        //yaziyi cizer
+            char level_str[32];                                                     //level yazisi icin karakter dizisi
+            sprintf(level_str,"LEVEL: %d",level);                                   //level sayisini yazar
+            al_draw_text(font,al_map_rgb(255,255,255), SCREEN_WIDTH-10, 15,         //sag ust (hud seridinde)
+            ALLEGRO_ALIGN_RIGHT, level_str);
             char time_str[32];                                                      //sure yazisi icin karakter dizisi
             sprintf(time_str,"TIME: %d",time_left/FPS); 
             al_draw_text(font,al_map_rgb(0,0,0),10, SCREEN_HEIGHT-20, 
