@@ -111,6 +111,8 @@ int main() {
     int invincible_timer=0;                                                         //her turlu carpismada sadece 1 can gitmesi icin dokunulmazlik sayaci
     bool game_over=false;                                                           //oyun kaybedildi mi
     int level=1;                                                                    //baslangic seviyesi
+    int score=0;                                                                    //baslangic skoru
+    float frog_max_y=frog.y;                                                        //kurbaganin bulundugu en ileri nokta
     int time_limit=60*FPS;                                                          //60 sn (frame cinsinden)
     int time_left=time_limit;                                                       //kalan sure
     Goal goals[GOAL_COUNT];                                                         //hedef dizisi
@@ -191,6 +193,7 @@ int main() {
                     game_over=true;                                                 //oyunu kaybet
                 frog.x=(SCREEN_WIDTH/2)-(frog.size/2);                              //baslangic x konumuna doner
                 frog.y=SCREEN_HEIGHT-LANE_HEIGHT+(LANE_HEIGHT-frog.size)/2;         //baslangic y konumuna doner
+                frog_max_y=frog.y;                                                  //en ileri nokta sifirlanir
                 time_left=time_limit;                                               //sureyi sifirlar
                 invincible_timer=30;                                                //dokunulmazlik suresi
             }
@@ -231,6 +234,7 @@ int main() {
                                     game_over=true;                                 //oyunu kaybet
                                 frog.x=(SCREEN_WIDTH/2)-(frog.size/2);              //baslangic x konumuna don
                                 frog.y=SCREEN_HEIGHT-LANE_HEIGHT+(LANE_HEIGHT-frog.size)/2; //baslangic y konumuna don
+                                frog_max_y=frog.y;                                  //en ileri noktayi sifirlar
                                 invincible_timer=30;                                //dokunulmazlik suresi
                             }
                             break;
@@ -247,6 +251,7 @@ int main() {
                         game_over=true;                                             //oyunu bitir
                     frog.x=(SCREEN_WIDTH/2)-(frog.size/2);                          //baslangic x konumu
                     frog.y=SCREEN_HEIGHT-LANE_HEIGHT+(LANE_HEIGHT-frog.size)/2;     //baslangic y konumu
+                    frog_max_y=frog.y;                                              //en ileri noktayi sifirlar
                     invincible_timer=30;                                            //dokunulmazlik suresi
                 }
             }
@@ -291,6 +296,7 @@ int main() {
                             game_over=true;                                         //oyunu kaybet
                         frog.x=(SCREEN_WIDTH/2)-(frog.size/2);                      //baslangic x konumuna doner
                         frog.y=SCREEN_HEIGHT-LANE_HEIGHT+(LANE_HEIGHT-frog.size)/2; //baslangic y konumuna doner
+                        frog_max_y=frog.y;                                          //en ileri nokta sifirlanir
                         invincible_timer=30;                                        //1 saniye dokunulmaz kalir
                         break;                                                      //tek seferde tek can kaybi
                     }
@@ -301,8 +307,10 @@ int main() {
                     if (!goals[i].filled&&frog.x+frog.size>goals[i].x&&             //dolu degilse ve kurbaga dogru yerdeyse
                     frog.x<goals[i].x+30) { 
                         goals[i].filled=true;                                       //hedefi doldurur
+                        score+=50;                                                  //50 puan (hedefe ulasma)
                         frog.x=(SCREEN_WIDTH/2)-(frog.size/2);                      //baslangic x konumuna doner
                         frog.y=SCREEN_HEIGHT-LANE_HEIGHT+(LANE_HEIGHT-frog.size)/2; //baslangic y konumuna doner
+                        frog_max_y=frog.y;                                          //en ileri nokta sifirlanir
                         invincible_timer=30;                                        //dokunulmazlik suresi
                         break;
                     }
@@ -316,6 +324,7 @@ int main() {
                 }
                 if (all_filled) {                                                   //hedeflerin hepsi dolduysa
                     level++;                                                        //seviyeyi arttırır
+                    score+=1000;                                                    //1000 puan (seviye atlama)
                     for (int i=0;i<GOAL_COUNT;i++)                                  //yeni seviyedeki her hedef icin
                         goals[i].filled=false;                                      //yerlerini tekrar bosaltir
                     for (int i=0;i<total_vehicles;i++)                              //her arac icin dongu
@@ -334,6 +343,10 @@ int main() {
                     case ALLEGRO_KEY_UP:
                         if (frog.y - STEP_SIZE >= 0) {                              //pencerenin ust sinirini asmiyorsa
                             frog.y -= STEP_SIZE;                                    //kurbaga yukari hareket eder
+                            if (frog.y<frog_max_y) {                                //daha once gidilmemis noktaya ulastiysa
+                                score+=10;                                          //10 puan (en ileri nokta)
+                                frog_max_y=frog.y;                                  //en ileri nokta artik          
+                            }
                         }
                             break;
                     case ALLEGRO_KEY_DOWN:
@@ -471,6 +484,10 @@ int main() {
                     heart_color
                 );
             }
+            char score_str[32];                                                     //skor yazisi icin karakter dizisi
+            sprintf(score_str,"SCORE: %d",score);                                   //skoru yazar
+            al_draw_text(font, al_map_rgb(255,255,255), SCREEN_WIDTH/2, 15,         //hudda orta ust
+            ALLEGRO_ALIGN_CENTRE,score_str);                                        //yaziyi cizer
             char time_str[32];                                                      //sure yazisi icin karakter dizisi
             sprintf(time_str,"TIME: %d",time_left/FPS); 
             al_draw_text(font,al_map_rgb(0,0,0),10, SCREEN_HEIGHT-20, 
