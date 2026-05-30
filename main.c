@@ -5,7 +5,7 @@
 #include <allegro5/allegro_font.h>                                                  //yazi icin
 #define FPS 60                                                                      //saniyede kare yenilenme hizi
 #define SCREEN_WIDTH 640                                                            //oyun penceresi yatay genislik
-#define SCREEN_HEIGHT 520                                                           //oyun penceresi dikey genislik
+#define SCREEN_HEIGHT 570                                                           //oyun penceresi dikey genislik
 #define STEP_SIZE 40                                                                //yon tuslariyla kurbaganin kac pixel hareket edecegi
 #define LANE_COUNT 13                                                               //serit sayisi
 #define LANE_HEIGHT 40                                                              //serit yuksekligi
@@ -13,6 +13,7 @@
 #define TOTAL_VEHICLES (LANE_COUNT*VEHICLES_PER_LANE)                               //toplam arac sayisi
 #define PLATFORMS_PER_LANE 3                                                        //her su seridindeki platform(kaplumbaga veya kutuk) sayisi
 #define GOAL_COUNT 5                                                                //hedef sayisi
+#define HUD_HEIGHT 50                                                               //hud seridi yuksekligi
 struct Frog {                                                                       //kurbaganin ozellikleri
     float x;                                                                        //yatay konumu
     float y;                                                                        //dikey konumu
@@ -104,7 +105,7 @@ int main() {
     frog.size= 20;                                                                  //boyutu 20 pixel
     frog.x= (SCREEN_WIDTH/2)-(frog.size/2);                                         //x ekseninde pencerenin tam ortasinda
     frog.y= SCREEN_HEIGHT-LANE_HEIGHT+(LANE_HEIGHT-frog.size)/2;                    //y ekseninde kurbaga baslangic seridinin tam ortasinda
-    frog.lives= 3;                                                                  //baslangicta 3 cani var
+    frog.lives= 5;                                                                  //baslangicta 5 cani var
     frog.drowning=false;                                                            //baslangicta batmiyor
     frog.drown_timer=0;                                                             //batma sayaci sifir
     int invincible_timer=0;                                                         //her turlu carpismada sadece 1 can gitmesi icin dokunulmazlik sayaci
@@ -125,7 +126,7 @@ int main() {
             vehicles[v].lane=i;                                                     //hangi seritte
             vehicles[v].direction=lanes[i].direction;                               //seridin yonunu kullan
             vehicles[v].speed=lanes[i].speed;                                       //seridin hizini kullan
-            vehicles[v].y=i*LANE_HEIGHT+(LANE_HEIGHT-30)/2;                         //y ekseninde seridin ortasinda
+            vehicles[v].y=HUD_HEIGHT+i*LANE_HEIGHT+(LANE_HEIGHT-30)/2;              //y ekseninde seridin ortasinda
             if (lanes[i].speed >= 3.0f)                                             //cok hizli seritteyse
                 vehicles[v].type=VEHICLE_BIKE;                                      //arac motor
             else if (lanes[i].speed <= 1.0f)                                        //yavas seritteyse
@@ -160,7 +161,7 @@ int main() {
             platforms[p].lane=i;                                                    //hangi seritte
             platforms[p].direction=lanes[i].direction;                              //seridin yonunu kullan
             platforms[p].speed=lanes[i].speed;                                      //seridin hizini kullan
-            platforms[p].y=i*LANE_HEIGHT+(LANE_HEIGHT-30)/2;                        //y ekseninde bulundugu seridi ortaliyor
+            platforms[p].y=HUD_HEIGHT+i*LANE_HEIGHT+(LANE_HEIGHT-30)/2;              //y ekseninde bulundugu seridi ortaliyor
             platforms[p].type=water_lane_types[water_lane];                         //siraya gore turunu belirle
             platforms[p].width=80.0f;                                               //genislik (2 kaplumbaga=1 kutuk)
             platforms[p].x=j*(SCREEN_WIDTH/PLATFORMS_PER_LANE);                     //platformlar aarsi mesafe esit
@@ -201,7 +202,7 @@ int main() {
                 if (platforms[i].direction==-1&&platforms[i].x+platforms[i].width<0)//pencerenin solundan disari cikinca
                     platforms[i].x=SCREEN_WIDTH;                                    //sagindan iceri girer
             }
-            int frog_lane= (int)(frog.y/LANE_HEIGHT);                               //kurbaga hangi seritte
+            int frog_lane= (int)((frog.y-HUD_HEIGHT)/LANE_HEIGHT);                  //kurbaga hangi seritte
             if (lanes[frog_lane].type==LANE_WATER) {                                //serit su seridi mi
                 bool on_platform=false;                                             //platform uzerinde mi
                 for (int i=0;i<total_platforms;i++) {                               //her platformu kontrol dongusu
@@ -347,8 +348,12 @@ int main() {
         if (redraw && al_is_event_queue_empty(event_queue)) {                       //sirada bekleyen olay yoksa cizimi baslatir
             redraw = false;
             al_clear_to_color(al_map_rgb(0,0,0));                                   //pencereyi tamamen siyaha boyayarak onceki karenin kalintilarini temizler
+            al_draw_filled_rectangle(                                               //hud arka planini cizer
+                0, 0, SCREEN_WIDTH, HUD_HEIGHT,
+                al_map_rgb(0,0,0)                                                   //siyah
+            );
             for(int i=0;i<LANE_COUNT;i++) {                                         //serit sayisi kadar dongu
-                float y=i*LANE_HEIGHT;                                              //seritin numarasina gore cizilecegi pixel yuksekligi
+                float y=HUD_HEIGHT+i*LANE_HEIGHT;                                   //seritin numarasina gore cizilecegi pixel yuksekligi
                 ALLEGRO_COLOR color;                                                //renk icin degisken
                 switch (lanes[i].type) {                                            //serit turune gore;
                     case LANE_START:                                                //baslangic seridi ise
@@ -376,17 +381,19 @@ int main() {
             for (int i=0;i<GOAL_COUNT;i++) {                                        //hedefler kontrol dongusu
                 if (goals[i].filled) {                                              //hedef dolduysa
                     al_draw_filled_rectangle(                                       //cerceve cizer
-                        goals[i].x, 5, goals[i].x+30, 35, al_map_rgb(0,80,0)        //cok koyu yesil
+                        goals[i].x, HUD_HEIGHT+5, goals[i].x+30,
+                        HUD_HEIGHT+35, al_map_rgb(0,80,0)                           //cok koyu yesil
                     );
                     al_draw_filled_rectangle(                                       //hedefe ulasmis kurbagayi cizer
-                        goals[i].x+(30-frog.size)/2, 5+(30-frog.size)/2,
-                        goals[i].x+(30+frog.size)/2, 5+(30+frog.size)/2, 
+                        goals[i].x+(30-frog.size)/2, HUD_HEIGHT+5+(30-frog.size)/2,
+                        goals[i].x+(30+frog.size)/2, HUD_HEIGHT+5+(30+frog.size)/2, 
                         al_map_rgb(0,102,0)                                         //koyu yesil
                     );
                 }
                 else {                                                              //hedef bossa
                     al_draw_filled_rectangle(                                       //bos hedef cercevesi
-                        goals[i].x, 5, goals[i].x+30, 35, al_map_rgb(0,180,0)       //acik yesil
+                        goals[i].x, HUD_HEIGHT+5, goals[i].x+30,
+                        HUD_HEIGHT+35, al_map_rgb(0,180,0)                          //acik yesil
                     );
                 }
             }                            
