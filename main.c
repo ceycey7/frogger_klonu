@@ -446,6 +446,19 @@ int main() {
                     frog.x + frog.size, frog.y + frog.size, al_map_rgb(0,102,0)     //koyu yesil
                 );
             }
+            for (int i=0;i<5;i++) {                                                 //can sayisi kadar dongu
+                ALLEGRO_COLOR heart_color;                                          //can gosterimi degiskeni
+                if (i<frog.lives) {                                                 //kalan canlar
+                    heart_color=al_map_rgb(255,0,0);                                //kirmizi
+                }           
+                else {                                                              //biten canlar
+                    heart_color=al_map_rgb(80,0,0);                                 //koyu kirmizi
+                }
+                al_draw_filled_rectangle(                                           //can gosterimi icin kare cizer
+                    10+i*20, 15, 25+i*20, 30,
+                    heart_color
+                );
+            }
             char time_str[32];                                                      //sure yazisi icin karakter dizisi
             sprintf(time_str,"TIME: %d",time_left/FPS); 
             al_draw_text(font,al_map_rgb(0,0,0),10, SCREEN_HEIGHT-20, 
